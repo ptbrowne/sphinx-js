@@ -1,3 +1,5 @@
+import functools
+
 from codecs import getwriter
 from collections import defaultdict
 from errno import ENOENT
@@ -84,6 +86,24 @@ class Command(object):
         return [self.program] + self.args
 
 
+def cached_to_file(get_filename):
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapped(*args, **kwargs):
+            filename = get_filename(*args, **kwargs)
+            if os.path.isfile(filename):
+                with open(filename) as f:
+                    return load(f)
+            res = fn(*args, **kwargs)
+            if filename:
+                with open(filename, 'w+') as f:
+                    dump(res, f, indent=2)
+            return res
+        return wrapped
+    return decorator
+
+
+@cached_to_file(lambda abs_source_paths, app: app.config.jsdoc_cache)
 def analyze_jsdoc(abs_source_paths, app):
     command = Command('jsdoc')
     command.add('-X', *abs_source_paths)
