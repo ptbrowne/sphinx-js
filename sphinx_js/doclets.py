@@ -1,3 +1,6 @@
+import parsimonious
+import functools
+
 from codecs import getwriter
 from collections import defaultdict
 from errno import ENOENT
@@ -45,8 +48,16 @@ def gather_doclets(app):
                 d)
         except PathTaken as conflict:
             conflicts.append(conflict.segments)
+        except parsimonious.exceptions.ParseError as e:
+            if not app.config.sphinx_js_lax:
+                raise
+            else:
+                print('Could not parse correctly %s' % d)
     if conflicts:
-        raise PathsTaken(conflicts)
+        if not app.config.sphinx_js_lax:
+            raise PathsTaken(conflicts)
+        else:
+            print('Doclets conflicts %s' % conflicts)
 
     # Build lookup table for autoclass's :members: option. This will also
     # pick up members of functions (inner variables), but it will instantly
